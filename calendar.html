@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Karlebo Klub Calendar</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; background:#fafafa; }
+    header { background:#111827; color:#fff; padding:12px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    header h1 { font-size:18px; margin:0 12px 0 0; white-space:nowrap; }
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .controls label { font-size:12px; color:#e5e7eb; }
+    .controls select { padding:6px 8px; border-radius:8px; border:1px solid #d1d5db; background:#fff; }
+    #warn { display:none; max-width:1200px; margin:12px auto 0; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:8px; padding:8px 12px; }
+    .legend { max-width:1200px; margin: 8px auto; padding: 0 12px; display:flex; flex-wrap:wrap; gap:8px; }
+    .legend .item { display:flex; align-items:center; gap:6px; font-size:12px; color:#374151; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:4px 8px; }
+    .swatch { width:14px; height:14px; border-radius:3px; border:1px solid #9ca3af; }
+    #calendar { max-width:1200px; margin: 8px auto 16px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px; }
+
+    .fc .fc-timegrid-event .fc-event-main > div:nth-child(1){ font-size:12px; } /* title */
+    .fc .fc-timegrid-event .fc-event-main > div:nth-child(2){ font-size:9px; } /* time */
+    .fc .fc-timegrid-event .fc-event-main > div:nth-child(3){ font-size:10px; } /* venue/coach */
+
+    .fc .fc-daygrid-event .fc-event-main > div:nth-child(1){ font-size:12px; } 
+    .fc .fc-daygrid-event .fc-event-main > div:nth-child(2){ font-size:9px; } 
+    .fc .fc-daygrid-event .fc-event-main > div:nth-child(3){ font-size:9px; } 
+
+    .fc .fc-list-event-time{ font-size:12px; }
+    .fc .fc-list-event-title{ font-size:12px; }
+
+    /* ONLY CHANGE: force event text color to black everywhere */
+    .fc .fc-event, .fc .fc-event * { color:#000 !important; }
+
+    /* Week header cells only (timeGridWeek) */
+    .fc .fc-timegrid .fc-col-header-cell{ background:#3da7e9; }
+    /* Optional: highlight today's header differently */
+    /*.fc .fc-col-header-cell.fc-day-today{ background:#985d2c; }*/
+    .fc .fc-daygrid .fc-col-header-cell{ background:#3da7e9; }
+
+    .fc .fc-week-number{ background:#f55d06; font-weight:900; }
+    .fc .fc-timegrid .fc-week-number{ background:#f55d06; width:40px; }
+
+    /* Venue tabs */
+    #venueTabs { max-width:1200px; margin:6px auto; padding:0 12px; display:flex; flex-wrap:wrap; gap:6px; }
+    #venueTabs .tab { padding:6px 10px; border:1px solid #d1d5db; border-radius:9999px; background:#fff; cursor:pointer; font-size:12px; }
+    #venueTabs .tab.active { background:#111827; color:#fff; border-color:#111827; }
+
+    /* Buttons */
+    .btn { padding:6px 10px; border:1px solid #d1d5db; border-radius:8px; background:#fff; cursor:pointer; font-size:12px; }
+    .btn:hover { background:#f3f4f6; }
+
+    /* Print: clean weekly layout */
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      body { background:#fff; }
+      header, .controls, #legend, #warn, #venueTabs, footer { display:none !important; }
+      .fc-header-toolbar, .fc-toolbar { display:none !important; }
+      #calendar { border:0; padding:0; }
+      .fc .fc-scrollgrid { border:0 !important; }
+    }
+
+    /* Hide color legend */
+    .legend,
+    #legend {
+      display: none !important;
+    }
+
+    /* Hide venue pill buttons */
+    #venueTabs {
+      display: none !important;
+    }
+
+
+</style>
+</head>
+<body>
+  <header>
+    <h1>Karlebo Club Calendar</h1>
+    <div class="controls">
+      <label>Group:
+        <select id="groupFilter"><option value="">All</option></select>
+      </label>
+      <label>Venue:
+        <select id="venueFilter"><option value="">All</option></select>
+      </label>
+      <label>Season:
+        <select id="seasonFilter"><option value="">All</option></select>
+      </label>
+      <label>View:
+        <select id="viewSelector">
+          <option value="dayGridMonth">Month</option>
+          <option value="timeGridWeek" selected>Week</option>
+          <option value="listWeek">List</option>
+        </select>
+      </label>
+      <label>Auto-refresh:
+        <select id="refreshSelector">
+          <option value="0">Off</option>
+          <option value="5">5 min</option>
+          <option value="15" selected>15 min</option>
+          <option value="60">1 hour</option>
+        </select>
+      </label>     
+      <button id="printBtn" class="btn" title="Print current week">Print week</button>
+      <button id="icsBtn" class="btn" title="Download .ics for current view">Add to Calendar (.ics)</button>
+    </div>
+  </header>
+
+  <div id="warn"></div>
+  <div class="legend" id="legend"></div>
+  <div id="venueTabs"></div>
+  <div id="calendar"></div>
+  <footer>Karlebo Klub - Calendar</footer>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const tz = "Europe/Copenhagen";
+    let calendar;
+    let allEvents = [];
+    let refreshTimer = null;
+    const colorByGroup = Object.assign({}, CONFIG.colorByGroup || {});
+    const palette = ['#2563eb','#16a34a','#dc2626','#7c3aed','#ea580c','#0891b2','#ca8a04','#0ea5e9','#22c55e','#ef4444','#8b5cf6','#f97316','#06b6d4','#f59e0b'];
+
+    function showWarn(msg){ const el=document.getElementById('warn'); el.textContent=msg; el.style.display='block'; }
+    function colorForGroup(g){ if(colorByGroup[g]) return colorByGroup[g]; let h=0; for(let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))>>>0; const c=palette[h%palette.length]; colorByGroup[g]=c; return c; }
+    function detectDelimiter(line){ const sc=(line.match(/;/g)||[]).length, cc=(line.match(/,/g)||[]).length; return sc>cc?';':','; }
+    function parseCSV(csv){
+      const lines = csv.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+      if(!lines.length) return {headers:[],rows:[]};
+      const delim = detectDelimiter(lines[0]);
+      function split(line){ const out=[]; let acc='', inQ=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ if(inQ && line[i+1]==='"'){ acc+='"'; i++; } else inQ=!inQ; } else if(ch===delim && !inQ){ out.push(acc); acc=''; } else acc+=ch; } out.push(acc); return out; }
+      const headers = split(lines.shift()).map(h=>h.trim().toLowerCase());
+      const rows = lines.map(ln=>{ const cols=split(ln); const o={}; headers.forEach((h,i)=>o[h]=(cols[i]||'').trim()); return o; });
+      return {headers,rows};
+    }
+
+    async function loadFromSheet(){
+      const url = (CONFIG.sheetCsvUrl||'').trim();
+
+
+      if(!url || url.includes('PASTE_')){ showWarn('Data sheet missing in config.js.'); return []; }
+      const res = await fetch(url + (url.includes('?')?'&':'?') + 'cacheBust=' + Date.now(), {cache:'no-store'});
+      if(!res.ok){ showWarn('Fetch failed: '+res.status+' '+res.statusText); return []; }
+      const csv = await res.text();
+      const parsed = parseCSV(csv);
+      return parsed.rows;
+    }
+
+    function buildEvents(rows){
+      allEvents = rows.map(e => ({
+        id: e.id || (e.start + '_' + e.title),
+        title: e.title,
+        start: e.start?.replace(' ', 'T'),
+        end: e.end?.replace(' ', 'T'),
+        color: colorForGroup(e.group || ''),
+        extendedProps: { group: e.group, venue: e.venue, coach: (e.coach || ''), season: e.season }
+      })).filter(ev => ev.start && ev.end);
+      buildFilters(rows);
+      buildLegend();
+      buildVenueTabs(rows);
+    }
+
+    function buildFilters(rows){
+      function distinct(col){ return Array.from(new Set(rows.map(r => (r[col]||'').trim()).filter(Boolean))).sort(); }
+      const groups = distinct('group'), venues = distinct('venue'), seasons = distinct('season');
+      const gSel=document.getElementById('groupFilter'), vSel=document.getElementById('venueFilter'), sSel=document.getElementById('seasonFilter');
+      [gSel,vSel,sSel].forEach(sel=>sel.length=1);
+      groups.forEach(g=>gSel.insertAdjacentHTML('beforeend', `<option value="${g}">${g}</option>`));
+      venues.forEach(v=>vSel.insertAdjacentHTML('beforeend', `<option value="${v}">${v}</option>`));
+      seasons.forEach(s=>sSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+    }
+    function buildLegend(){
+      const legend=document.getElementById('legend'); legend.innerHTML='';
+      const groups = Array.from(new Set(allEvents.map(e=>e.extendedProps.group))).filter(Boolean).sort();
+      groups.forEach(g=>{ const c=colorForGroup(g); const div=document.createElement('div'); div.className='item'; div.innerHTML=`<span class="swatch" style="background:${c}"></span><span>${g}</span>`; div.onclick=()=>{ const sel=document.getElementById('groupFilter'); sel.value=(sel.value===g)?'':g; calendar.refetchEvents(); }; legend.appendChild(div); });
+    }
+
+    function getFilters(){ return { group: document.getElementById('groupFilter').value, venue: document.getElementById('venueFilter').value, season: document.getElementById('seasonFilter').value }; }
+    function filterEventsArray(){
+      const f = getFilters();
+      return allEvents.filter(ev => {
+        if(f.group && ev.extendedProps.group !== f.group) return false;
+        if(f.venue && ev.extendedProps.venue !== f.venue) return false;
+        if(f.season && ev.extendedProps.season !== f.season) return false;
+        return true;
+      });
+    }
+
+    async function refresh(){
+      const rows = await loadFromSheet();
+      if(rows.length===0){ allEvents=[]; if(calendar) calendar.refetchEvents(); return; }
+      buildEvents(rows);
+      if(calendar) calendar.refetchEvents();
+    }
+    function setAutoRefresh(minutes){ if(refreshTimer) clearInterval(refreshTimer); if(minutes>0) refreshTimer=setInterval(refresh, minutes*60*1000); }
+
+    
+    // Build clickable venue tabs to filter by venue
+    function buildVenueTabs(rows){
+      const tabs = document.getElementById('venueTabs');
+      if(!tabs) return;
+      tabs.innerHTML = '';
+      const venues = Array.from(new Set(rows.map(r => (r['venue']||'').trim()).filter(Boolean))).sort();
+      const all = document.createElement('div');
+      all.className = 'tab active';
+      all.textContent = 'All venues';
+      all.onclick = () => { document.getElementById('venueFilter').value = ''; setActive(all); calendar.refetchEvents(); };
+      tabs.appendChild(all);
+      venues.forEach(v => {
+        const tab = document.createElement('div');
+        tab.className = 'tab';
+        tab.textContent = v;
+        tab.onclick = () => { document.getElementById('venueFilter').value = v; setActive(tab); calendar.refetchEvents(); };
+        tabs.appendChild(tab);
+      });
+      function setActive(activeEl){
+        Array.from(tabs.querySelectorAll('.tab')).forEach(el => el.classList.toggle('active', el===activeEl));
+      }
+    }
+
+    // Export ICS for current view + filters
+    function exportICS(){ 
+                                       // Export what's visible to .ics
+      const tzid = 'Europe/Copenhagen';                    // Use DK timezone
+      const rangeStart = calendar.view.activeStart;        // Current view start
+      const rangeEnd   = calendar.view.activeEnd;          // Current view end
+
+      const evs = calendar.getEvents().filter(e =>         // Only events inside the view
+        e.start && e.end && e.start < rangeEnd && e.end > rangeStart
+      );
+
+      // UTC formatter -> YYYYMMDDTHHMMSSZ
+      const icsUTC = d => {
+        const iso = new Date(d).toISOString();                 // e.g. 2025-10-04T14:00:00.000Z
+        return iso.split('.')[0].replace(/[-:]/g,'') + 'Z';    // -> 20251004T140000Z
+      };
+      const esc      = s => (s||'').toString().replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n');   // Escape ICS specials
+      const dtstamp = new Date().toISOString().split('.')[0].replace(/[-:]/g,'') + 'Z'; // UTC metadata timestamp
+
+      const lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Fredensborg CC//Training Calendar//EN',
+        'CALSCALE:GREGORIAN'
+      ];
+      evs.forEach(e => {      
+        // One VEVENT per visible event
+        const p   = e.extendedProps || {};
+        const uid = (e.id || (e.start.toISOString() + '_' + e.title)) // Build a stable unique id
+                      .replace(/\s+/g,'') + '@fredensborg-cc';
+
+        lines.push('BEGIN:VEVENT');                                   // Start event
+        lines.push('UID:' + uid);                                     // Unique ID
+        lines.push('DTSTAMP:' + dtstamp);                             // Export time (UTC)
+        lines.push('DTSTART;TZID=' + tzid + ':'  + icsUTC(e.start));  // Start in DK wall time (no Z)
+        lines.push('DTEND;TZID='   + tzid + ':'  + icsUTC(e.end));    // End in DK wall time (no Z)
+        lines.push('SUMMARY:' + esc(e.title) + ' - ' + esc(p.coach));                        // Title
+        if (p.venue) lines.push('LOCATION:' + esc(p.venue));          // Venue if present
+        const desc = [
+          p.coach  ? 'Coach: '  + p.coach  : '',
+          p.group  ? 'Group: '  + p.group  : '',
+          p.season ? 'Season: ' + p.season : ''
+        ].filter(Boolean).join('\\n');
+        if (desc) lines.push('DESCRIPTION:' + esc(desc));
+        lines.push('END:VEVENT');                                     // End event
+      });
+
+      lines.push('END:VCALENDAR');                                    // End file
+
+      const blob = new Blob([lines.join('\r\n')], {type:'text/calendar;charset=utf-8'}); // Make file
+      const a = document.createElement('a');                          // Trigger download
+      const startStr = rangeStart.toISOString().slice(0,10).replace(/-/g,''); // For filename
+      const endStr   = new Date(rangeEnd.getTime()-1).toISOString().slice(0,10).replace(/-/g,'');
+      a.download = `fcc_calendar_${startStr}_${endStr}.ics`;          // e.g. fcc_calendar_20251001_20251007.ics
+      a.href = URL.createObjectURL(blob);
+      document.body.appendChild(a); a.click();                        // Download now
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100); // Cleanup
+    }
+
+
+    async function init(){
+      await refresh();
+
+      const calendarEl = document.getElementById('calendar');
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        timeZone: tz,
+        initialView: 'timeGridWeek',
+        weekNumbers: true,                 // show week-number column
+        weekNumberCalculation: 'ISO',      // ISO weeks (Mon-based)
+        weekNumberContent: (arg) => 'W' + arg.num, // label like W41
+        firstDay: 1,
+        buttonText:{ dayGridMonth:'Month', timeGridWeek:'Week', listWeek:'List', today: 'Today' },
+        headerToolbar: { left:'prev,next today', center:'title', right:'dayGridMonth,timeGridWeek,listWeek' },
+        slotMinTime: '06:00:00', slotMaxTime: '22:00:00', nowIndicator: true, height: 'auto',
+        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+        // ⬇️ ADD THIS BLOCK
+        views: {
+          dayGridMonth: {
+            displayEventEnd: true,
+            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false }
+          }
+        },
+        events: function(info, successCallback, failureCallback){
+          try { successCallback(filterEventsArray()); } catch(e){ if(failureCallback) failureCallback(e); }
+        },
+        eventContent: function(arg){
+          const p = arg.event.extendedProps;
+          const div = document.createElement('div');
+          div.innerHTML = `<div><strong>${arg.event.title}</strong></div>
+                           <div>${arg.timeText}</div>
+                           <div style="font-size:12px;opacity:.8">${p.coach ? `Lead: ${p.coach}` : ' '} <br> ${p.venue || ' '}</div>`;
+          return { domNodes: [div] };
+        }
+      });
+      calendar.render();
+
+      const printBtn = document.getElementById('printBtn'); if(printBtn){ printBtn.addEventListener('click', () => window.print()); }
+      const icsBtn = document.getElementById('icsBtn'); if(icsBtn){ icsBtn.addEventListener('click', exportICS); }
+
+      document.getElementById('groupFilter').addEventListener('change', () => calendar.refetchEvents());
+      document.getElementById('venueFilter').addEventListener('change', () => calendar.refetchEvents());
+      document.getElementById('seasonFilter').addEventListener('change', () => calendar.refetchEvents());
+      document.getElementById('viewSelector').addEventListener('change', (e) => calendar.changeView(e.target.value));
+      document.getElementById('refreshSelector').addEventListener('change', (e) => setAutoRefresh(parseInt(e.target.value,10)));
+      setAutoRefresh(parseInt(document.getElementById('refreshSelector').value,10));
+    }
+    init();
+  </script>
+
+
+
+</body>
+</html>
