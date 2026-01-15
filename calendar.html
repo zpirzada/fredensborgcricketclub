@@ -71,6 +71,25 @@
       display: none !important;
     }
 
+    /* Mobile improvements */
+    @media (max-width: 600px){
+      header { padding: 10px 12px; }
+      header h1 { font-size: 16px; width: 100%; }
+
+      .controls { width: 100%; gap: 8px; }
+      .controls label { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+      .controls select, .controls button { width: 100%; }
+
+      #calendar { margin: 8px; padding: 6px; border-radius: 10px; }
+
+      /* Make toolbar wrap cleanly */
+      .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+      .fc .fc-toolbar-chunk { width: 100%; display: flex; justify-content: center; }
+
+      /* Prefer list view readability on phones */
+      .fc .fc-timegrid-slot-label, .fc .fc-timegrid-axis-cushion { font-size: 10px; }
+      .fc .fc-col-header-cell-cushion { font-size: 11px; }
+    }
 
 </style>
 </head>
@@ -285,7 +304,7 @@
       const calendarEl = document.getElementById('calendar');
       calendar = new FullCalendar.Calendar(calendarEl, {
         timeZone: tz,
-        initialView: 'timeGridWeek',
+        initialView: (window.innerWidth < 600 ? 'listWeek' : 'timeGridWeek'),
         weekNumbers: true,                 // show week-number column
         weekNumberCalculation: 'ISO',      // ISO weeks (Mon-based)
         weekNumberContent: (arg) => 'W' + arg.num, // label like W41
